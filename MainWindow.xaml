@@ -14,6 +14,19 @@
     <Grid>
         <!-- 准星 -->
         <Canvas x:Name="CrosshairCanvas" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <!-- 描边层 -->
+            <Path x:Name="CrosshairOutline" Stroke="Black" StrokeThickness="4" 
+                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                  Visibility="Collapsed">
+                <Path.Data>
+                    <GeometryGroup>
+                        <LineGeometry StartPoint="-10,0" EndPoint="10,0" />
+                        <LineGeometry StartPoint="0,-10" EndPoint="0,10" />
+                        <EllipseGeometry Center="0,0" RadiusX="3" RadiusY="3" />
+                    </GeometryGroup>
+                </Path.Data>
+            </Path>
+            <!-- 主准星 -->
             <Path x:Name="Crosshair" Stroke="#99FF0000" StrokeThickness="2" 
                   HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Path.Data>

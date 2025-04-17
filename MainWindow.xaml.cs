@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.Windows.Forms;
@@ -312,6 +313,8 @@ public partial class MainWindow : Window
         }
         
         // 更新准星在Canvas内的位置，使其居中
+        if (CrosshairCanvas == null || Crosshair == null) return;
+        
         double canvasWidth = CrosshairCanvas.ActualWidth;
         double canvasHeight = CrosshairCanvas.ActualHeight;
         
@@ -319,6 +322,10 @@ public partial class MainWindow : Window
         {
             Canvas.SetLeft(Crosshair, (canvasWidth - Crosshair.ActualWidth) / 2);
             Canvas.SetTop(Crosshair, (canvasHeight - Crosshair.ActualHeight) / 2);
+            
+            // 更新描边位置，与主准星保持一致
+            Canvas.SetLeft(CrosshairOutline, Canvas.GetLeft(Crosshair));
+            Canvas.SetTop(CrosshairOutline, Canvas.GetTop(Crosshair));
         }
     }
 
@@ -327,7 +334,48 @@ public partial class MainWindow : Window
     {
         if (Crosshair == null) return;
         
+        // 更新主准星
         CrosshairRenderer.UpdateCrosshair(Crosshair, _settings);
+        
+        // 处理描边效果
+        if (_settings.EnableOutline && _settings.UseSolidOutline)
+        {
+            // 使用实线描边，显示额外的描边Path
+            CrosshairOutline.Visibility = Visibility.Visible;
+            CrosshairOutline.Data = Crosshair.Data; // 确保描边与主准星形状一致
+            
+            // 设置描边颜色和透明度
+            System.Windows.Media.Color outlineColor = _settings.OutlineColor;
+            outlineColor.A = Convert.ToByte(255 * _settings.OutlineOpacity);
+            CrosshairOutline.Stroke = new SolidColorBrush(outlineColor);
+            
+            // 设置描边粗细，必须比主准星粗
+            CrosshairOutline.StrokeThickness = _settings.BorderThickness + _settings.OutlineThickness * 2;
+            
+            // 主准星不应该有阴影效果
+            Crosshair.Effect = null;
+        }
+        else if (_settings.EnableOutline)
+        {
+            // 使用DropShadow效果的描边
+            CrosshairOutline.Visibility = Visibility.Collapsed;
+            
+            var shadowEffect = new DropShadowEffect
+            {
+                Color = _settings.OutlineColor,
+                Direction = 0,
+                ShadowDepth = 0,
+                BlurRadius = _settings.OutlineThickness * 3, // 模糊半径
+                Opacity = _settings.OutlineOpacity
+            };
+            Crosshair.Effect = shadowEffect;
+        }
+        else
+        {
+            // 不使用描边
+            CrosshairOutline.Visibility = Visibility.Collapsed;
+            Crosshair.Effect = null;
+        }
         
         // 确保准星位置正确
         UpdateCrosshairPosition();
@@ -381,53 +429,27 @@ public partial class MainWindow : Window
         Console.WriteLine($"窗口尺寸: Width={Width}, Height={Height}");
     }
 
-    private void MainWindow_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    private void OnKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e == null) return;
         
-        // Alt键被按下
-        if (e.Key == System.Windows.Input.Key.System && e.SystemKey == System.Windows.Input.Key.Z)
+        if (Keyboard.Modifiers == ModifierKeys.Alt)
         {
-            // 切换准星可见性
-            ToggleCrosshairVisibility();
-            e.Handled = true;
-        }
-        else if (e.Key == System.Windows.Input.Key.System && e.SystemKey == System.Windows.Input.Key.X)
-        {
-            // 打开设置界面
-            ShowSettings();
-            e.Handled = true;
-        }
-        else if (e.Key == System.Windows.Input.Key.System && e.SystemKey == System.Windows.Input.Key.Q)
-        {
-            // 退出程序
-            System.Windows.Application.Current.Shutdown();
-            e.Handled = true;
-        }
-        else if (e.Key == System.Windows.Input.Key.System && e.SystemKey == System.Windows.Input.Key.Home)
-        {
-            // 重置位置到屏幕中央
-            ResetPosition();
-            e.Handled = true;
-        }
-        else if (Keyboard.Modifiers == ModifierKeys.Alt)
-        {
-            // 使用方向键移动准星
             switch (e.Key)
             {
-                case System.Windows.Input.Key.Up:
+                case Key.Up:
                     MoveUp();
                     e.Handled = true;
                     break;
-                case System.Windows.Input.Key.Down:
+                case Key.Down:
                     MoveDown();
                     e.Handled = true;
                     break;
-                case System.Windows.Input.Key.Left:
+                case Key.Left:
                     MoveLeft();
                     e.Handled = true;
                     break;
-                case System.Windows.Input.Key.Right:
+                case Key.Right:
                     MoveRight();
                     e.Handled = true;
                     break;

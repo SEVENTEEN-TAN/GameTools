@@ -20,3 +20,4 @@ C:\Users\23399\Desktop\GameTools\obj\Debug\net9.0-windows\refint\GameTools.dll
 C:\Users\23399\Desktop\GameTools\obj\Debug\net9.0-windows\GameTools.pdb
 C:\Users\23399\Desktop\GameTools\obj\Debug\net9.0-windows\GameTools.genruntimeconfig.cache
 C:\Users\23399\Desktop\GameTools\obj\Debug\net9.0-windows\ref\GameTools.dll
+C:\Users\23399\Desktop\GameTools\obj\Debug\net9.0-windows\GameTools.sourcelink.json

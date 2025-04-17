@@ -3,6 +3,7 @@ using System.Windows.Media;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using System.Collections.Generic;
 
 namespace GameTools
 {
@@ -36,26 +37,12 @@ namespace GameTools
         }
         
         // 设置文件的路径
-        private string SettingsFilePath
-        {
-            get
-            {
-                string appDataPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "GameTools");
-                
-                // 确保目录存在
-                if (!Directory.Exists(appDataPath))
-                {
-                    Directory.CreateDirectory(appDataPath);
-                }
-                
-                return Path.Combine(appDataPath, "settings.json");
-            }
-        }
+        private static readonly string SettingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
         
         // 默认设置
-        private const double DefaultSize = 1.0;
+        public const double MinSize = 0.2;
+        public const double MaxSize = 5.0;
+        public const double DefaultSize = 1.0;
         private const double DefaultOpacity = 0.7;
         private const int DefaultStyle = 0;
         private static readonly System.Windows.Media.Color DefaultColor = Colors.Red;
@@ -65,6 +52,7 @@ namespace GameTools
         private static readonly System.Windows.Media.Color DefaultOutlineColor = Colors.Black;
         private const double DefaultOutlineOpacity = 0.8;
         private const double DefaultOutlineThickness = 1.0;
+        private const bool DefaultUseSolidOutline = false; // 默认不使用实线描边
 
         // 设置属性
         public double Size { get; set; } = DefaultSize;
@@ -77,6 +65,7 @@ namespace GameTools
         public System.Windows.Media.Color OutlineColor { get; set; } = DefaultOutlineColor; // 描边颜色
         public double OutlineOpacity { get; set; } = DefaultOutlineOpacity; // 描边透明度
         public double OutlineThickness { get; set; } = DefaultOutlineThickness; // 描边粗细
+        public bool UseSolidOutline { get; set; } = DefaultUseSolidOutline; // 是否使用实线描边（Excel风格）
 
         // 准星样式名称数组
         public static readonly string[] CrosshairStyles = new string[]
@@ -95,7 +84,15 @@ namespace GameTools
         // 私有构造函数（单例模式）
         private CrosshairSettings()
         {
-            // 构造函数中不调用LoadSettings，避免重复调用
+            // 初始化默认设置
+            Size = 20;
+            BorderThickness = 1.5f;
+            Opacity = 0.8;
+            Style = 0;
+            Color = System.Windows.Media.Colors.Green;
+            EnableOutline = false;
+            UseSolidOutline = false;
+            OutlineThickness = 2.0f;
         }
 
         // 用于序列化/反序列化的数据传输对象
@@ -119,6 +116,7 @@ namespace GameTools
             public byte OutlineColorA { get; set; }
             public double OutlineOpacity { get; set; }
             public double OutlineThickness { get; set; }
+            public bool UseSolidOutline { get; set; } // 新增：是否使用实线描边
         }
 
         // 将设置转换为DTO
@@ -141,7 +139,8 @@ namespace GameTools
                 OutlineColorB = OutlineColor.B,
                 OutlineColorA = OutlineColor.A,
                 OutlineOpacity = OutlineOpacity,
-                OutlineThickness = OutlineThickness
+                OutlineThickness = OutlineThickness,
+                UseSolidOutline = UseSolidOutline
             };
         }
 
@@ -176,6 +175,7 @@ namespace GameTools
             );
             OutlineOpacity = dto.OutlineOpacity;
             OutlineThickness = dto.OutlineThickness;
+            UseSolidOutline = dto.UseSolidOutline; // 新增：加载是否使用实线描边
         }
 
         // 加载设置
@@ -198,6 +198,11 @@ namespace GameTools
                     };
                     
                     var settingsDto = JsonSerializer.Deserialize<CrosshairSettingsDto>(json, options);
+                    if (settingsDto == null)
+                    {
+                        ResetToDefaults();
+                        return;
+                    }
                     FromDto(settingsDto);
                 }
                 else
@@ -220,7 +225,7 @@ namespace GameTools
         {
             try
             {
-                string directoryPath = Path.GetDirectoryName(SettingsFilePath) ?? string.Empty;
+                string? directoryPath = Path.GetDirectoryName(SettingsFilePath);
                 if (!string.IsNullOrEmpty(directoryPath) && !Directory.Exists(directoryPath))
                 {
                     Directory.CreateDirectory(directoryPath);
@@ -250,23 +255,23 @@ namespace GameTools
             Opacity = DefaultOpacity;
             Style = DefaultStyle;
             Color = DefaultColor;
+            UseSolidOutline = DefaultUseSolidOutline;
             BorderThickness = DefaultBorderThickness;
             ShowFill = DefaultShowFill;
             EnableOutline = DefaultEnableOutline;
-            OutlineColor = DefaultOutlineColor;
-            OutlineOpacity = DefaultOutlineOpacity;
             OutlineThickness = DefaultOutlineThickness;
+            OutlineOpacity = DefaultOutlineOpacity;
         }
 
         // 更改准星大小
         public void IncreaseSize(double amount = 0.1)
         {
-            Size = Math.Min(Size + amount, 3.0); // 限制最大值
+            Size = Math.Min(Size + amount, MaxSize); // 限制最大值
         }
 
         public void DecreaseSize(double amount = 0.1)
         {
-            Size = Math.Max(Size - amount, 0.2); // 限制最小值
+            Size = Math.Max(Size - amount, MinSize); // 限制最小值
         }
 
         // 切换准星样式
@@ -314,6 +319,12 @@ namespace GameTools
             EnableOutline = !EnableOutline;
         }
 
+        // 切换实线描边
+        public void ToggleSolidOutline()
+        {
+            UseSolidOutline = !UseSolidOutline;
+        }
+
         // 调整描边透明度
         public void IncreaseOutlineOpacity(double amount = 0.1)
         {
@@ -334,6 +345,17 @@ namespace GameTools
         public void DecreaseOutlineThickness(double amount = 0.5)
         {
             OutlineThickness = Math.Max(OutlineThickness - amount, 0.5);
+        }
+
+        private void ValidateValues()
+        {
+            // 确保所有数值在有效范围内
+            Opacity = Math.Clamp(Opacity, 0.1, 1.0);
+            Size = Math.Clamp(Size, MinSize, MaxSize);
+            Style = Math.Clamp(Style, 0, 7);
+            BorderThickness = Math.Clamp(BorderThickness, 0.5, 5.0);
+            OutlineThickness = Math.Clamp(OutlineThickness, 0.5, 10.0);
+            OutlineOpacity = Math.Clamp(OutlineOpacity, 0.1, 1.0);
         }
     }
 } 

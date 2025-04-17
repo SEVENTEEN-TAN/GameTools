@@ -9,141 +9,143 @@ namespace GameTools
     public static class CrosshairRenderer
     {
         // 创建准星路径数据
-        public static Geometry CreateCrosshairGeometry(int style, double size)
+        public static Geometry CreateCrosshairGeometry(int style, double size, double borderThickness = 1.0)
         {
-            GeometryGroup geometryGroup = new GeometryGroup();
+            StreamGeometry geometry = new StreamGeometry();
             
-            switch (style)
+            using (StreamGeometryContext context = geometry.Open())
             {
-                case 0: // 默认 (十字带圆心)
-                    geometryGroup.Children.Add(new LineGeometry(new System.Windows.Point(-10 * size, 0), new System.Windows.Point(10 * size, 0)));
-                    geometryGroup.Children.Add(new LineGeometry(new System.Windows.Point(0, -10 * size), new System.Windows.Point(0, 10 * size)));
-                    geometryGroup.Children.Add(new EllipseGeometry(new System.Windows.Point(0, 0), 3 * size, 3 * size));
-                    break;
-                
-                case 1: // 简单十字
-                    geometryGroup.Children.Add(new LineGeometry(new System.Windows.Point(-10 * size, 0), new System.Windows.Point(10 * size, 0)));
-                    geometryGroup.Children.Add(new LineGeometry(new System.Windows.Point(0, -10 * size), new System.Windows.Point(0, 10 * size)));
-                    break;
-                
-                case 2: // 圆形 (中空)
-                    geometryGroup.Children.Add(new EllipseGeometry(new System.Windows.Point(0, 0), 10 * size, 10 * size));
-                    break;
-                
-                case 3: // 点
-                    geometryGroup.Children.Add(new EllipseGeometry(new System.Windows.Point(0, 0), 4 * size, 4 * size));
-                    break;
-                
-                case 4: // 三角形 (中空)
-                    PathFigure figure = new PathFigure();
-                    figure.StartPoint = new System.Windows.Point(0, -10 * size);
-                    figure.Segments.Add(new LineSegment(new System.Windows.Point(10 * size, 10 * size), true));
-                    figure.Segments.Add(new LineSegment(new System.Windows.Point(-10 * size, 10 * size), true));
-                    figure.IsClosed = true;
-                    
-                    PathGeometry pathGeometry = new PathGeometry();
-                    pathGeometry.Figures.Add(figure);
-                    geometryGroup.Children.Add(pathGeometry);
-                    break;
-                    
-                case 5: // 方形 (中空)
-                    geometryGroup.Children.Add(new RectangleGeometry(new Rect(-10 * size, -10 * size, 20 * size, 20 * size)));
-                    break;
-                    
-                case 6: // 菱形 (中空)
-                    PathFigure diamondFigure = new PathFigure();
-                    diamondFigure.StartPoint = new System.Windows.Point(0, -10 * size);
-                    diamondFigure.Segments.Add(new LineSegment(new System.Windows.Point(10 * size, 0), true));
-                    diamondFigure.Segments.Add(new LineSegment(new System.Windows.Point(0, 10 * size), true));
-                    diamondFigure.Segments.Add(new LineSegment(new System.Windows.Point(-10 * size, 0), true));
-                    diamondFigure.IsClosed = true;
-                    
-                    PathGeometry diamondGeometry = new PathGeometry();
-                    diamondGeometry.Figures.Add(diamondFigure);
-                    geometryGroup.Children.Add(diamondGeometry);
-                    break;
-                    
-                case 7: // 十字准星2 (带间隔)
-                    // 水平线（左侧）
-                    geometryGroup.Children.Add(new LineGeometry(new System.Windows.Point(-12 * size, 0), new System.Windows.Point(-4 * size, 0)));
-                    // 水平线（右侧）
-                    geometryGroup.Children.Add(new LineGeometry(new System.Windows.Point(4 * size, 0), new System.Windows.Point(12 * size, 0)));
-                    // 垂直线（上侧）
-                    geometryGroup.Children.Add(new LineGeometry(new System.Windows.Point(0, -12 * size), new System.Windows.Point(0, -4 * size)));
-                    // 垂直线（下侧）
-                    geometryGroup.Children.Add(new LineGeometry(new System.Windows.Point(0, 4 * size), new System.Windows.Point(0, 12 * size)));
-                    break;
-                    
-                case 8: // 圆环 (双圆)
-                    geometryGroup.Children.Add(new EllipseGeometry(new System.Windows.Point(0, 0), 10 * size, 10 * size));
-                    geometryGroup.Children.Add(new EllipseGeometry(new System.Windows.Point(0, 0), 5 * size, 5 * size));
-                    break;
+                switch (style)
+                {
+                    case 0: // 默认十字带圆心
+                        // 水平线
+                        context.BeginFigure(new System.Windows.Point(-size, 0), false, false);
+                        context.LineTo(new System.Windows.Point(-2, 0), true, false);
+                        
+                        context.BeginFigure(new System.Windows.Point(2, 0), false, false);
+                        context.LineTo(new System.Windows.Point(size, 0), true, false);
+                        
+                        // 垂直线
+                        context.BeginFigure(new System.Windows.Point(0, -size), false, false);
+                        context.LineTo(new System.Windows.Point(0, -2), true, false);
+                        
+                        context.BeginFigure(new System.Windows.Point(0, 2), false, false);
+                        context.LineTo(new System.Windows.Point(0, size), true, false);
+                        
+                        // 圆心
+                        EllipseGeometry circle = new EllipseGeometry(new System.Windows.Point(0, 0), 1, 1);
+                        return Geometry.Combine(geometry, circle, GeometryCombineMode.Union, null);
+                        
+                    case 1: // 十字准星
+                        // 水平线
+                        context.BeginFigure(new System.Windows.Point(-size, 0), false, false);
+                        context.LineTo(new System.Windows.Point(size, 0), true, false);
+                        
+                        // 垂直线
+                        context.BeginFigure(new System.Windows.Point(0, -size), false, false);
+                        context.LineTo(new System.Windows.Point(0, size), true, false);
+                        break;
+                        
+                    case 2: // 圆形
+                        EllipseGeometry circleGeom = new EllipseGeometry(new System.Windows.Point(0, 0), size, size);
+                        return circleGeom;
+                        
+                    case 3: // 点
+                        EllipseGeometry dotGeom = new EllipseGeometry(new System.Windows.Point(0, 0), size/2, size/2);
+                        return dotGeom;
+                        
+                    case 4: // 三角形
+                        double triangleSize = size * 1.5;
+                        context.BeginFigure(new System.Windows.Point(0, -triangleSize), true, true);
+                        context.LineTo(new System.Windows.Point(triangleSize * 0.866, triangleSize / 2), true, false);
+                        context.LineTo(new System.Windows.Point(-triangleSize * 0.866, triangleSize / 2), true, false);
+                        break;
+                        
+                    case 5: // 方形
+                        context.BeginFigure(new System.Windows.Point(-size, -size), true, true);
+                        context.LineTo(new System.Windows.Point(size, -size), true, false);
+                        context.LineTo(new System.Windows.Point(size, size), true, false);
+                        context.LineTo(new System.Windows.Point(-size, size), true, false);
+                        break;
+                        
+                    case 6: // 菱形
+                        context.BeginFigure(new System.Windows.Point(0, -size * 1.5), true, true);
+                        context.LineTo(new System.Windows.Point(size, 0), true, false);
+                        context.LineTo(new System.Windows.Point(0, size * 1.5), true, false);
+                        context.LineTo(new System.Windows.Point(-size, 0), true, false);
+                        break;
+                        
+                    case 7: // 十字准星2（中间空心）
+                        double gap = size / 3;
+                        
+                        // 左边横线
+                        context.BeginFigure(new System.Windows.Point(-size, 0), false, false);
+                        context.LineTo(new System.Windows.Point(-gap, 0), true, false);
+                        
+                        // 右边横线
+                        context.BeginFigure(new System.Windows.Point(gap, 0), false, false);
+                        context.LineTo(new System.Windows.Point(size, 0), true, false);
+                        
+                        // 上边竖线
+                        context.BeginFigure(new System.Windows.Point(0, -size), false, false);
+                        context.LineTo(new System.Windows.Point(0, -gap), true, false);
+                        
+                        // 下边竖线
+                        context.BeginFigure(new System.Windows.Point(0, gap), false, false);
+                        context.LineTo(new System.Windows.Point(0, size), true, false);
+                        break;
+                        
+                    case 8: // 圆环
+                        // 外圆
+                        EllipseGeometry outerCircle = new EllipseGeometry(new System.Windows.Point(0, 0), size, size);
+                        // 内圆（用于挖空）
+                        EllipseGeometry innerCircle = new EllipseGeometry(new System.Windows.Point(0, 0), size - borderThickness * 2, size - borderThickness * 2);
+                        // 合并为圆环
+                        return Geometry.Combine(outerCircle, innerCircle, GeometryCombineMode.Exclude, null);
+                        
+                    default:
+                        // 默认为十字准星
+                        context.BeginFigure(new System.Windows.Point(-size, 0), false, false);
+                        context.LineTo(new System.Windows.Point(size, 0), true, false);
+                        
+                        context.BeginFigure(new System.Windows.Point(0, -size), false, false);
+                        context.LineTo(new System.Windows.Point(0, size), true, false);
+                        break;
+                }
             }
             
-            return geometryGroup;
+            geometry.Freeze();
+            return geometry;
         }
 
         // 更新准星
         public static void UpdateCrosshair(Path crosshair, CrosshairSettings settings)
         {
-            if (crosshair == null) throw new ArgumentNullException(nameof(crosshair));
-            if (settings == null) throw new ArgumentNullException(nameof(settings));
-            
-            // 根据当前选择的准星样式创建形状
-            crosshair.Data = CreateCrosshairGeometry(settings.Style, settings.Size);
-            
-            // 设置准星颜色
-            SolidColorBrush brush = new SolidColorBrush(settings.Color);
-            brush.Opacity = settings.Opacity;
-            
-            // 根据准星样式决定是否填充
-            switch (settings.Style)
-            {
-                case 0: // 默认十字带圆心 - 圆心填充
-                case 3: // 点 - 填充
-                    crosshair.Fill = brush;
-                    break;
-                case 2: // 圆形 - 中空
-                case 4: // 三角形 - 中空
-                case 5: // 方形 - 中空
-                case 6: // 菱形 - 中空
-                case 7: // 十字准星2 - 中空
-                case 8: // 圆环 - 中空
-                    crosshair.Fill = null;
-                    break;
-                default: // 对于其他样式，根据是否需要边框设置
-                    crosshair.Fill = settings.ShowFill ? brush : null;
-                    break;
-            }
-            
-            // 设置边框
-            crosshair.Stroke = brush;
+            if (crosshair == null) return;
+
+            // 根据样式和尺寸创建几何图形
+            crosshair.Data = CreateCrosshairGeometry(settings.Style, settings.Size, settings.BorderThickness);
+
+            // 设置描边颜色和透明度
+            System.Windows.Media.Color strokeColor = settings.Color;
+            strokeColor.A = Convert.ToByte(255 * settings.Opacity);
+            crosshair.Stroke = new SolidColorBrush(strokeColor);
             crosshair.StrokeThickness = settings.BorderThickness;
             
-            // 如果启用了描边，添加描边效果
-            if (settings.EnableOutline)
+            // 根据ShowFill设置填充
+            if (settings.ShowFill)
             {
-                // 创建描边效果
-                SolidColorBrush outlineBrush = new SolidColorBrush(settings.OutlineColor);
-                outlineBrush.Opacity = settings.OutlineOpacity;
-                
-                // 由于WPF Path不直接支持多重描边，我们使用DropShadowEffect来模拟描边效果
-                DropShadowEffect outline = new DropShadowEffect
-                {
-                    Color = settings.OutlineColor,
-                    Direction = 0,
-                    ShadowDepth = 0,
-                    BlurRadius = settings.OutlineThickness * 3,
-                    Opacity = settings.OutlineOpacity
-                };
-                
-                crosshair.Effect = outline;
+                System.Windows.Media.Color fillColor = settings.Color;
+                fillColor.A = Convert.ToByte(255 * settings.Opacity * 0.5); // 填充透明度为描边的一半
+                crosshair.Fill = new SolidColorBrush(fillColor);
             }
             else
             {
-                // 如果未启用描边，清除效果
-                crosshair.Effect = null;
+                crosshair.Fill = null;
             }
+
+            // 描边效果现在在主窗口和设置窗口中分别处理
+            // 此处不再处理实线描边逻辑
         }
     }
 } 

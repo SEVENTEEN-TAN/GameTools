@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Media.Effects;
 
 namespace GameTools
 {
@@ -67,7 +68,7 @@ namespace GameTools
         {
             // 加载准星样式
             StyleComboBox.ItemsSource = CrosshairSettings.CrosshairStyles;
-            StyleComboBox.SelectedIndex = _settings.Style;
+            StyleComboBox.SelectedIndex = (int)_settings.Style;
             
             // 加载大小和透明度
             SizeSlider.Value = _settings.Size;
@@ -78,20 +79,69 @@ namespace GameTools
             ShowFillCheckBox.IsChecked = _settings.ShowFill;
             
             // 加载描边设置
-            EnableOutlineCheckBox.IsChecked = _settings.EnableOutline;
+            EnableOutlineCheckbox.IsChecked = _settings.EnableOutline;
             OutlineOpacitySlider.Value = _settings.OutlineOpacity;
-            OutlineThicknessSlider.Value = _settings.OutlineThickness;
+            OutlineStyleCheckbox.IsChecked = _settings.UseSolidOutline;
+            OutlineWidthSlider.Value = _settings.OutlineThickness;
+            
+            // 更新准星颜色按钮的UI
+            UpdateColorButtonUI();
             
             // 更新预览
             UpdatePreview();
+            UpdatePreviewPosition();
         }
 
         private void UpdatePreview()
         {
-            // 更新预览准星
+            // 更新准星样式
             CrosshairRenderer.UpdateCrosshair(PreviewCrosshair, _settings);
-
-            // 更新准星位置
+            
+            // 更新准星描边
+            if (_settings.EnableOutline)
+            {
+                if (_settings.UseSolidOutline)
+                {
+                    // 使用实线描边
+                    PreviewOutline.Visibility = Visibility.Visible;
+                    // 确保与主准星使用相同的几何形状
+                    PreviewOutline.Data = PreviewCrosshair.Data;
+                    
+                    // 设置描边颜色和透明度
+                    System.Windows.Media.Color outlineColor = _settings.OutlineColor;
+                    outlineColor.A = Convert.ToByte(255 * _settings.OutlineOpacity);
+                    PreviewOutline.Stroke = new SolidColorBrush(outlineColor);
+                    
+                    // 设置描边粗细，必须比主准星粗
+                    PreviewOutline.StrokeThickness = _settings.BorderThickness + _settings.OutlineThickness * 2;
+                    
+                    // 移除阴影效果
+                    PreviewCrosshair.Effect = null;
+                }
+                else
+                {
+                    // 使用阴影效果
+                    PreviewOutline.Visibility = Visibility.Collapsed;
+                    
+                    DropShadowEffect shadowEffect = new DropShadowEffect
+                    {
+                        Color = _settings.OutlineColor,
+                        Direction = 0,
+                        ShadowDepth = 0,
+                        BlurRadius = _settings.OutlineThickness * 3,
+                        Opacity = _settings.OutlineOpacity
+                    };
+                    
+                    PreviewCrosshair.Effect = shadowEffect;
+                }
+            }
+            else
+            {
+                // 禁用所有描边效果
+                PreviewOutline.Visibility = Visibility.Collapsed;
+                PreviewCrosshair.Effect = null;
+            }
+            
             UpdatePreviewPosition();
         }
 
@@ -140,29 +190,38 @@ namespace GameTools
             }
         }
 
-        private void EnableOutlineCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
+        private void EnableOutlineCheckbox_CheckedChanged(object sender, RoutedEventArgs e)
         {
-            if (IsInitialized)
+            if (_settings != null)
             {
-                _settings.EnableOutline = EnableOutlineCheckBox.IsChecked ?? false;
+                _settings.EnableOutline = EnableOutlineCheckbox.IsChecked ?? false;
+                UpdatePreview();
+            }
+        }
+
+        private void OutlineStyleCheckbox_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            if (_settings != null)
+            {
+                _settings.UseSolidOutline = OutlineStyleCheckbox.IsChecked ?? false;
+                UpdatePreview();
+            }
+        }
+
+        private void OutlineWidthSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_settings != null)
+            {
+                _settings.OutlineThickness = (float)OutlineWidthSlider.Value;
                 UpdatePreview();
             }
         }
 
         private void OutlineOpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (IsInitialized)
+            if (_settings != null)
             {
                 _settings.OutlineOpacity = e.NewValue;
-                UpdatePreview();
-            }
-        }
-
-        private void OutlineThicknessSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (IsInitialized)
-            {
-                _settings.OutlineThickness = e.NewValue;
                 UpdatePreview();
             }
         }
@@ -249,9 +308,10 @@ namespace GameTools
             _settings.ShowFill = ShowFillCheckBox.IsChecked ?? true;
             
             // 保存描边设置
-            _settings.EnableOutline = EnableOutlineCheckBox.IsChecked ?? false;
+            _settings.EnableOutline = EnableOutlineCheckbox.IsChecked ?? false;
             _settings.OutlineOpacity = OutlineOpacitySlider.Value;
-            _settings.OutlineThickness = OutlineThicknessSlider.Value;
+            _settings.UseSolidOutline = OutlineStyleCheckbox.IsChecked ?? false;
+            _settings.OutlineThickness = (float)OutlineWidthSlider.Value;
             
             // 保存设置
             _settings.SaveSettings();
@@ -259,5 +319,54 @@ namespace GameTools
             // 更新主窗口中的准星
             _mainWindow.UpdateCrosshair();
         }
+
+        private void UpdateColorButtonUI()
+        {
+            // 直接在XAML中添加x:Name属性后，我们可以这样访问按钮
+            var redButton = this.FindName("RedButton") as System.Windows.Controls.Button;
+            var greenButton = this.FindName("GreenButton") as System.Windows.Controls.Button;
+            var blueButton = this.FindName("BlueButton") as System.Windows.Controls.Button;
+            var yellowButton = this.FindName("YellowButton") as System.Windows.Controls.Button;
+            var magentaButton = this.FindName("MagentaButton") as System.Windows.Controls.Button;
+            var cyanButton = this.FindName("CyanButton") as System.Windows.Controls.Button;
+            var whiteButton = this.FindName("WhiteButton") as System.Windows.Controls.Button;
+            var orangeButton = this.FindName("OrangeButton") as System.Windows.Controls.Button;
+            
+            // 更新颜色按钮的UI
+            if (redButton != null) redButton.Background = new SolidColorBrush(Colors.Red); 
+            if (greenButton != null) greenButton.Background = new SolidColorBrush(Colors.Green);
+            if (blueButton != null) blueButton.Background = new SolidColorBrush(Colors.Blue);
+            if (yellowButton != null) yellowButton.Background = new SolidColorBrush(Colors.Yellow);
+            if (magentaButton != null) magentaButton.Background = new SolidColorBrush(Colors.Magenta);
+            if (cyanButton != null) cyanButton.Background = new SolidColorBrush(Colors.Cyan);
+            if (whiteButton != null) whiteButton.Background = new SolidColorBrush(Colors.White);
+            if (orangeButton != null) orangeButton.Background = new SolidColorBrush(Colors.Orange);
+        }
+
+        #region 轮廓颜色按钮事件处理
+        private void BlackOutlineButton_Click(object sender, RoutedEventArgs e)
+        {
+            _settings.OutlineColor = System.Windows.Media.Colors.Black;
+            UpdatePreview();
+        }
+
+        private void WhiteOutlineButton_Click(object sender, RoutedEventArgs e)
+        {
+            _settings.OutlineColor = System.Windows.Media.Colors.White;
+            UpdatePreview();
+        }
+
+        private void RedOutlineButton_Click(object sender, RoutedEventArgs e)
+        {
+            _settings.OutlineColor = System.Windows.Media.Colors.Red;
+            UpdatePreview();
+        }
+
+        private void GreenOutlineButton_Click(object sender, RoutedEventArgs e)
+        {
+            _settings.OutlineColor = System.Windows.Media.Colors.Green;
+            UpdatePreview();
+        }
+        #endregion
     }
 } 
