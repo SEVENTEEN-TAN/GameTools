@@ -17,24 +17,34 @@ namespace GameTools
             {
                 switch (style)
                 {
-                    case 0: // 默认十字带圆心
-                        // 水平线
-                        context.BeginFigure(new System.Windows.Point(-size, 0), false, false);
-                        context.LineTo(new System.Windows.Point(-2, 0), true, false);
+                    case 0: // 井字形状准星
+                        // 确保线条的长度足够
+                        double lineLength = Math.Max(10, size * 1.5);
                         
-                        context.BeginFigure(new System.Windows.Point(2, 0), false, false);
-                        context.LineTo(new System.Windows.Point(size, 0), true, false);
+                        // 计算线条之间的间距，使其随着准星大小调整而保持合适的比例
+                        // 当准星小时，保持最小间距，随着准星变大，间距按比例增加，但增长速度稍慢些
+                        double lineSpacing = Math.Max(3, size * 0.6);
                         
-                        // 垂直线
-                        context.BeginFigure(new System.Windows.Point(0, -size), false, false);
-                        context.LineTo(new System.Windows.Point(0, -2), true, false);
+                        // 限制最大间距，防止间距过大
+                        lineSpacing = Math.Min(lineSpacing, lineLength * 0.4);
                         
-                        context.BeginFigure(new System.Windows.Point(0, 2), false, false);
-                        context.LineTo(new System.Windows.Point(0, size), true, false);
+                        // 上方水平线
+                        context.BeginFigure(new System.Windows.Point(-lineLength, -lineSpacing), false, false);
+                        context.LineTo(new System.Windows.Point(lineLength, -lineSpacing), true, false);
                         
-                        // 圆心
-                        EllipseGeometry circle = new EllipseGeometry(new System.Windows.Point(0, 0), 1, 1);
-                        return Geometry.Combine(geometry, circle, GeometryCombineMode.Union, null);
+                        // 下方水平线
+                        context.BeginFigure(new System.Windows.Point(-lineLength, lineSpacing), false, false);
+                        context.LineTo(new System.Windows.Point(lineLength, lineSpacing), true, false);
+                        
+                        // 左侧垂直线
+                        context.BeginFigure(new System.Windows.Point(-lineSpacing, -lineLength), false, false);
+                        context.LineTo(new System.Windows.Point(-lineSpacing, lineLength), true, false);
+                        
+                        // 右侧垂直线
+                        context.BeginFigure(new System.Windows.Point(lineSpacing, -lineLength), false, false);
+                        context.LineTo(new System.Windows.Point(lineSpacing, lineLength), true, false);
+                        
+                        return geometry;
                         
                     case 1: // 十字准星
                         // 水平线
