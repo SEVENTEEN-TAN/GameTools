@@ -178,8 +178,8 @@ namespace GameTools
             {
                 // 确定提示音文件路径
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                _limitOnSoundPath = Path.Combine(baseDir, "Sounds", "limit_on.wav");
-                _limitOffSoundPath = Path.Combine(baseDir, "Sounds", "limit_off.wav");
+                _limitOnSoundPath = Path.Combine(baseDir, "Sounds", "success.wav");
+                _limitOffSoundPath = Path.Combine(baseDir, "Sounds", "fail.wav");
                 
                 // 创建声音文件目录
                 Directory.CreateDirectory(Path.Combine(baseDir, "Sounds"));
@@ -345,9 +345,6 @@ namespace GameTools
                     {
                         PlaySound(_limitOnSoundPath);
                     }
-                    
-                    MessageBox.Show($"已对 {TargetProcess.Name} 应用网络限速:\n上行: {UploadLimit} KB/s\n下行: {DownloadLimit} KB/s", 
-                        "网络限速已启用", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
                 {
@@ -384,9 +381,6 @@ namespace GameTools
                     {
                         PlaySound(_limitOffSoundPath);
                     }
-                    
-                    MessageBox.Show($"已解除 {TargetProcess.Name} 的网络限速", 
-                        "网络限速已停止", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
                 {
@@ -433,22 +427,78 @@ namespace GameTools
         {
             try
             {
+                // 记录日志
+                Console.WriteLine($"正在播放声音: {soundPath}");
+                
                 if (File.Exists(soundPath))
                 {
-                    using (var player = new SoundPlayer(soundPath))
+                    try
                     {
-                        player.Play();
+                        string extension = Path.GetExtension(soundPath).ToLower();
+                        Console.WriteLine($"声音文件存在，文件扩展名: {extension}");
+                        
+                        if (extension == ".wav")
+                        {
+                            // 对于WAV文件使用SoundPlayer
+                            Console.WriteLine("使用SoundPlayer播放WAV文件");
+                            using (var player = new SoundPlayer(soundPath))
+                            {
+                                player.Play();
+                                Console.WriteLine("WAV声音播放指令已发送");
+                            }
+                        }
+                        else
+                        {
+                            // 对于其他格式(如MP3)，使用系统声音
+                            Console.WriteLine($"文件格式{extension}不是WAV，使用系统声音替代");
+                            if (soundPath.Contains("success"))
+                            {
+                                SystemSounds.Asterisk.Play();
+                                Console.WriteLine("播放系统Asterisk声音");
+                            }
+                            else
+                            {
+                                SystemSounds.Hand.Play();
+                                Console.WriteLine("播放系统Hand声音");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"播放声音出错: {ex.Message}");
+                        // 出错时使用系统声音
+                        if (soundPath.Contains("success"))
+                        {
+                            SystemSounds.Asterisk.Play();
+                            Console.WriteLine("播放系统Asterisk声音");
+                        }
+                        else
+                        {
+                            SystemSounds.Hand.Play();
+                            Console.WriteLine("播放系统Hand声音");
+                        }
                     }
                 }
                 else
                 {
+                    Console.WriteLine($"声音文件不存在: {soundPath}，使用系统声音代替");
                     // 使用系统提示音
-                    SystemSounds.Asterisk.Play();
+                    if (soundPath.Contains("success"))
+                    {
+                        SystemSounds.Asterisk.Play();
+                        Console.WriteLine("播放系统Asterisk声音");
+                    }
+                    else
+                    {
+                        SystemSounds.Hand.Play();
+                        Console.WriteLine("播放系统Hand声音");
+                    }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // 忽略播放声音时的错误
+                // 记录任何错误
+                Console.WriteLine($"播放声音时发生错误: {ex.Message}");
             }
         }
         #endregion
