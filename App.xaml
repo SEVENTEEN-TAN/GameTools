@@ -4,6 +4,64 @@
              xmlns:local="clr-namespace:GameTools"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <DrawingImage x:Key="AppIconResource">
+            <DrawingImage.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="Green">
+                        <GeometryDrawing.Geometry>
+                            <EllipseGeometry Center="50,50" RadiusX="50" RadiusY="50"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="Transparent">
+                        <GeometryDrawing.Pen>
+                            <Pen Brush="White" Thickness="5"/>
+                        </GeometryDrawing.Pen>
+                        <GeometryDrawing.Geometry>
+                            <GeometryGroup>
+                                <LineGeometry StartPoint="25,50" EndPoint="75,50"/>
+                                <LineGeometry StartPoint="50,25" EndPoint="50,75"/>
+                            </GeometryGroup>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingImage.Drawing>
+        </DrawingImage>
+
+        <DrawingImage x:Key="NetworkIconResource">
+            <DrawingImage.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="Blue">
+                        <GeometryDrawing.Geometry>
+                            <EllipseGeometry Center="50,50" RadiusX="50" RadiusY="50"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="White">
+                        <GeometryDrawing.Geometry>
+                            <PathGeometry>
+                                <PathFigure StartPoint="20,50">
+                                    <BezierSegment Point1="20,20" Point2="80,20" Point3="80,50"/>
+                                </PathFigure>
+                            </PathGeometry>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="White">
+                        <GeometryDrawing.Geometry>
+                            <PathGeometry>
+                                <PathFigure StartPoint="80,50">
+                                    <BezierSegment Point1="80,80" Point2="20,80" Point3="20,50"/>
+                                </PathFigure>
+                            </PathGeometry>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingImage.Drawing>
+        </DrawingImage>
+
+        <ContextMenu x:Key="TrayIconContextMenu">
+            <MenuItem Header="设置" x:Name="SettingsMenuItem"/>
+            <MenuItem Header="网络控制" x:Name="NetworkControlMenuItem"/>
+            <Separator/>
+            <MenuItem Header="退出" x:Name="ExitMenuItem"/>
+        </ContextMenu>
     </Application.Resources>
 </Application>

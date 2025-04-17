@@ -10,9 +10,9 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-using System.Windows.Forms;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Hardcodet.Wpf.TaskbarNotification;
 
 namespace GameTools;
 
@@ -25,7 +25,7 @@ public partial class MainWindow : Window
     private CrosshairSettings _settings;
     private SettingsWindow? _settingsWindow;
     private bool _isVisible = true;
-    private NotifyIcon? _notifyIcon;
+    private TaskbarIcon? _notifyIcon;
     
     // 准星位置偏移
     private double _xOffset = 0;
@@ -61,7 +61,7 @@ public partial class MainWindow : Window
     private bool _isCrosshairVisible = true;
 
     // 新增: 打开网络控制窗口
-    private NetworkControlWindow _networkControlWindow;
+    private NetworkControlWindow? _networkControlWindow;
     
     public MainWindow()
     {
@@ -97,38 +97,37 @@ public partial class MainWindow : Window
 
     private void InitializeNotifyIcon()
     {
-        _notifyIcon = new NotifyIcon();
-        _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
-        _notifyIcon.Text = "游戏准星工具";
-        _notifyIcon.Visible = true;
-
-        ContextMenuStrip contextMenu = new ContextMenuStrip();
-        
-        ToolStripMenuItem toggleItem = new ToolStripMenuItem("显示/隐藏准星");
-        toggleItem.Click += (s, e) => ToggleVisibility();
-        contextMenu.Items.Add(toggleItem);
-        
-        ToolStripMenuItem settingsItem = new ToolStripMenuItem("准星设置");
-        settingsItem.Click += (s, e) => OpenSettings();
-        contextMenu.Items.Add(settingsItem);
-        
-        // 添加网络控制菜单项
-        ToolStripMenuItem networkItem = new ToolStripMenuItem("网络控制");
-        networkItem.Click += (s, e) => OpenNetworkControl();
-        contextMenu.Items.Add(networkItem);
-        
-        contextMenu.Items.Add(new ToolStripSeparator());
-        
-        ToolStripMenuItem exitItem = new ToolStripMenuItem("退出");
-        exitItem.Click += (s, e) => 
+        try
         {
-            System.Windows.Application.Current.Shutdown();
-        };
-        contextMenu.Items.Add(exitItem);
-        
-        _notifyIcon.ContextMenuStrip = contextMenu;
-        
-        _notifyIcon.DoubleClick += (s, e) => OpenSettings();
+            _notifyIcon = new TaskbarIcon();
+            _notifyIcon.IconSource = System.Windows.Application.Current.FindResource("AppIconResource") as ImageSource;
+            _notifyIcon.ToolTipText = "游戏准星工具";
+            _notifyIcon.ContextMenu = System.Windows.Application.Current.FindResource("TrayIconContextMenu") as ContextMenu;
+            _notifyIcon.TrayMouseDoubleClick += NotifyIcon_TrayLeftMouseDoubleClick;
+            
+            // 绑定上下文菜单项的点击事件
+            if (_notifyIcon.ContextMenu != null)
+            {
+                // 查找并绑定设置菜单项
+                var settingsMenuItem = LogicalTreeHelper.FindLogicalNode(_notifyIcon.ContextMenu, "SettingsMenuItem") as MenuItem;
+                if (settingsMenuItem != null)
+                    settingsMenuItem.Click += (s, e) => OpenSettings();
+                
+                // 查找并绑定网络控制菜单项
+                var networkMenuItem = LogicalTreeHelper.FindLogicalNode(_notifyIcon.ContextMenu, "NetworkControlMenuItem") as MenuItem;
+                if (networkMenuItem != null)
+                    networkMenuItem.Click += (s, e) => OpenNetworkControl();
+                
+                // 查找并绑定退出菜单项
+                var exitMenuItem = LogicalTreeHelper.FindLogicalNode(_notifyIcon.ContextMenu, "ExitMenuItem") as MenuItem;
+                if (exitMenuItem != null)
+                    exitMenuItem.Click += ExitApplication;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"初始化托盘图标失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void Window_Loaded(object? sender, RoutedEventArgs? e)
@@ -172,7 +171,6 @@ public partial class MainWindow : Window
 
         if (_notifyIcon != null)
         {
-            _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
         }
     }
@@ -217,13 +215,13 @@ public partial class MainWindow : Window
 
     #region 热键回调函数
     
-    private void ToggleVisibility()
+    public void ToggleVisibility()
     {
         _isVisible = !_isVisible;
         Visibility = _isVisible ? Visibility.Visible : Visibility.Hidden;
     }
 
-    private void OpenSettings()
+    public void OpenSettings()
     {
         if (_settingsWindow == null || !_settingsWindow.IsLoaded)
         {
@@ -237,7 +235,7 @@ public partial class MainWindow : Window
     }
     
     // 新增: 打开网络控制窗口
-    private void OpenNetworkControl()
+    public void OpenNetworkControl()
     {
         if (_networkControlWindow == null || !_networkControlWindow.IsLoaded)
         {
@@ -347,36 +345,36 @@ public partial class MainWindow : Window
         }
         
         // 更新准星在Canvas内的位置，使其居中
-        if (CrosshairCanvas == null || Crosshair == null) return;
+        if (CrosshairCanvas == null || CrosshairShape == null) return;
         
         double canvasWidth = CrosshairCanvas.ActualWidth;
         double canvasHeight = CrosshairCanvas.ActualHeight;
         
         if (canvasWidth > 0 && canvasHeight > 0)
         {
-            Canvas.SetLeft(Crosshair, (canvasWidth - Crosshair.ActualWidth) / 2);
-            Canvas.SetTop(Crosshair, (canvasHeight - Crosshair.ActualHeight) / 2);
+            Canvas.SetLeft(CrosshairShape, (canvasWidth - CrosshairShape.ActualWidth) / 2);
+            Canvas.SetTop(CrosshairShape, (canvasHeight - CrosshairShape.ActualHeight) / 2);
             
             // 更新描边位置，与主准星保持一致
-            Canvas.SetLeft(CrosshairOutline, Canvas.GetLeft(Crosshair));
-            Canvas.SetTop(CrosshairOutline, Canvas.GetTop(Crosshair));
+            Canvas.SetLeft(CrosshairOutline, Canvas.GetLeft(CrosshairShape));
+            Canvas.SetTop(CrosshairOutline, Canvas.GetTop(CrosshairShape));
         }
     }
 
     // 更新准星
     public void UpdateCrosshair()
     {
-        if (Crosshair == null) return;
+        if (CrosshairShape == null) return;
         
         // 更新主准星
-        CrosshairRenderer.UpdateCrosshair(Crosshair, _settings);
+        CrosshairRenderer.UpdateCrosshair(CrosshairShape, _settings);
         
         // 处理描边效果
         if (_settings.EnableOutline && _settings.UseSolidOutline)
         {
             // 使用实线描边，显示额外的描边Path
             CrosshairOutline.Visibility = Visibility.Visible;
-            CrosshairOutline.Data = Crosshair.Data; // 确保描边与主准星形状一致
+            CrosshairOutline.Data = CrosshairShape.Data; // 确保描边与主准星形状一致
             
             // 设置描边颜色和透明度
             System.Windows.Media.Color outlineColor = _settings.OutlineColor;
@@ -387,7 +385,7 @@ public partial class MainWindow : Window
             CrosshairOutline.StrokeThickness = _settings.BorderThickness + _settings.OutlineThickness * 2;
             
             // 主准星不应该有阴影效果
-            Crosshair.Effect = null;
+            CrosshairShape.Effect = null;
         }
         else if (_settings.EnableOutline)
         {
@@ -402,13 +400,13 @@ public partial class MainWindow : Window
                 BlurRadius = _settings.OutlineThickness * 3, // 模糊半径
                 Opacity = _settings.OutlineOpacity
             };
-            Crosshair.Effect = shadowEffect;
+            CrosshairShape.Effect = shadowEffect;
         }
         else
         {
             // 不使用描边
             CrosshairOutline.Visibility = Visibility.Collapsed;
-            Crosshair.Effect = null;
+            CrosshairShape.Effect = null;
         }
         
         // 确保准星位置正确
@@ -502,7 +500,7 @@ public partial class MainWindow : Window
     private void ToggleCrosshairVisibility()
     {
         _isCrosshairVisible = !_isCrosshairVisible;
-        Crosshair.Visibility = _isCrosshairVisible ? Visibility.Visible : Visibility.Hidden;
+        CrosshairShape.Visibility = _isCrosshairVisible ? Visibility.Visible : Visibility.Hidden;
     }
 
     private void ShowSettings()
@@ -516,5 +514,15 @@ public partial class MainWindow : Window
         {
             _settingsWindow.Activate();
         }
+    }
+
+    private void NotifyIcon_TrayLeftMouseDoubleClick(object sender, RoutedEventArgs e)
+    {
+        OpenSettings();
+    }
+    
+    private void ExitApplication(object sender, RoutedEventArgs e)
+    {
+        System.Windows.Application.Current.Shutdown();
     }
 }

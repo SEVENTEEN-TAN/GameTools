@@ -204,9 +204,9 @@ namespace GameTools
         /// </summary>
         private void InitializeNetworkLimiter()
         {
-            // 使用NetshNetworkLimiter实现网络限速
+            // 使用MockNetworkLimiter实现网络限速进行测试
             // 策略模式：可以在此处更换不同的网络限速实现
-            _networkLimiter = new NetshNetworkLimiter();
+            _networkLimiter = new MockNetworkLimiter();
         }
         
         private void LoadFrequentProcesses()

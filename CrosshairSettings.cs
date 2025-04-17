@@ -41,7 +41,7 @@ namespace GameTools
         
         // 默认设置
         public const double MinSize = 0.2;
-        public const double MaxSize = 5.0;
+        public const double MaxSize = 20.0;
         public const double DefaultSize = 1.0;
         private const double DefaultOpacity = 0.7;
         private const int DefaultStyle = 0;

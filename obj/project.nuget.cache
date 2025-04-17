@@ -1,14 +1,16 @@
 {
   "version": 2,
-  "dgSpecHash": "6KSuPt5F9IU=",
+  "dgSpecHash": "SSSLqgMYrdg=",
   "success": true,
   "projectFilePath": "C:\\Users\\23399\\Desktop\\GameTools\\GameTools.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\23399\\.nuget\\packages\\hardcodet.notifyicon.wpf\\2.0.1\\hardcodet.notifyicon.wpf.2.0.1.nupkg.sha512",
     "C:\\Users\\23399\\.nuget\\packages\\microsoft.applicationinsights\\2.21.0\\microsoft.applicationinsights.2.21.0.nupkg.sha512",
     "C:\\Users\\23399\\.nuget\\packages\\microsoft.csharp\\4.7.0\\microsoft.csharp.4.7.0.nupkg.sha512",
     "C:\\Users\\23399\\.nuget\\packages\\microsoft.management.infrastructure\\2.0.0\\microsoft.management.infrastructure.2.0.0.nupkg.sha512",
     "C:\\Users\\23399\\.nuget\\packages\\microsoft.management.infrastructure.runtime.unix\\2.0.0\\microsoft.management.infrastructure.runtime.unix.2.0.0.nupkg.sha512",
     "C:\\Users\\23399\\.nuget\\packages\\microsoft.management.infrastructure.runtime.win\\2.0.0\\microsoft.management.infrastructure.runtime.win.2.0.0.nupkg.sha512",
+    "C:\\Users\\23399\\.nuget\\packages\\microsoft.net.illink.tasks\\9.0.4\\microsoft.net.illink.tasks.9.0.4.nupkg.sha512",
     "C:\\Users\\23399\\.nuget\\packages\\microsoft.powershell.coreclr.eventing\\7.3.10\\microsoft.powershell.coreclr.eventing.7.3.10.nupkg.sha512",
     "C:\\Users\\23399\\.nuget\\packages\\microsoft.powershell.native\\7.3.2\\microsoft.powershell.native.7.3.2.nupkg.sha512",
     "C:\\Users\\23399\\.nuget\\packages\\microsoft.security.extensions\\1.2.0\\microsoft.security.extensions.1.2.0.nupkg.sha512",
@@ -29,7 +31,11 @@
     "C:\\Users\\23399\\.nuget\\packages\\system.security.cryptography.protecteddata\\7.0.1\\system.security.cryptography.protecteddata.7.0.1.nupkg.sha512",
     "C:\\Users\\23399\\.nuget\\packages\\system.security.permissions\\7.0.0\\system.security.permissions.7.0.0.nupkg.sha512",
     "C:\\Users\\23399\\.nuget\\packages\\system.text.encoding.codepages\\7.0.0\\system.text.encoding.codepages.7.0.0.nupkg.sha512",
-    "C:\\Users\\23399\\.nuget\\packages\\system.windows.extensions\\7.0.0\\system.windows.extensions.7.0.0.nupkg.sha512"
+    "C:\\Users\\23399\\.nuget\\packages\\system.windows.extensions\\7.0.0\\system.windows.extensions.7.0.0.nupkg.sha512",
+    "C:\\Users\\23399\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\9.0.4\\microsoft.aspnetcore.app.runtime.win-x64.9.0.4.nupkg.sha512",
+    "C:\\Users\\23399\\.nuget\\packages\\microsoft.netcore.app.crossgen2.win-x64\\9.0.4\\microsoft.netcore.app.crossgen2.win-x64.9.0.4.nupkg.sha512",
+    "C:\\Users\\23399\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\9.0.4\\microsoft.netcore.app.runtime.win-x64.9.0.4.nupkg.sha512",
+    "C:\\Users\\23399\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\9.0.4\\microsoft.windowsdesktop.app.runtime.win-x64.9.0.4.nupkg.sha512"
   ],
   "logs": []
 }
