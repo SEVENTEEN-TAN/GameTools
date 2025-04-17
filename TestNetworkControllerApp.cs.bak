@@ -1,0 +1,57 @@
+using System;
+using System.Threading.Tasks;
+
+namespace GameTools
+{
+    class TestNetworkControllerApp
+    {
+        static async Task Main(string[] args)
+        {
+            Console.WriteLine("开始测试NetworkController...");
+            
+            try
+            {
+                // 尝试获取NetworkController实例
+                var controller = NetworkController.Instance;
+                Console.WriteLine($"获取NetworkController实例: {(controller != null ? "成功" : "失败")}");
+                
+                if (controller != null)
+                {
+                    // 测试获取进程列表
+                    Console.WriteLine("尝试获取进程列表...");
+                    var processes = controller.GetRunningProcesses();
+                    Console.WriteLine($"获取到 {processes.Count} 个进程");
+                    
+                    // 显示前5个进程
+                    Console.WriteLine("前5个进程:");
+                    for (int i = 0; i < Math.Min(5, processes.Count); i++)
+                    {
+                        Console.WriteLine($"  {processes[i].Name} - {processes[i].WindowTitle}");
+                    }
+                    
+                    // 测试其他属性
+                    Console.WriteLine($"上传限制: {controller.UploadLimit}");
+                    Console.WriteLine($"下载限制: {controller.DownloadLimit}");
+                    Console.WriteLine($"声音通知: {controller.EnableSoundNotification}");
+                    Console.WriteLine($"限速活动状态: {controller.IsLimitActive}");
+                }
+                
+                Console.WriteLine("NetworkController测试完成");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"测试过程中发生异常: {ex.Message}");
+                Console.WriteLine($"堆栈跟踪: {ex.StackTrace}");
+                
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"内部异常: {ex.InnerException.Message}");
+                    Console.WriteLine($"内部异常堆栈: {ex.InnerException.StackTrace}");
+                }
+            }
+            
+            Console.WriteLine("按任意键退出...");
+            Console.ReadKey();
+        }
+    }
+} 

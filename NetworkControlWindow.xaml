@@ -1,0 +1,201 @@
+<Window x:Class="GameTools.NetworkControlWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:GameTools"
+        mc:Ignorable="d"
+        Title="网络控制" Height="580" Width="600"
+        WindowStartupLocation="CenterScreen">
+    
+    <Window.Resources>
+        <local:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+    </Window.Resources>
+    
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- 标题 -->
+        <TextBlock Grid.Row="0" Text="网络控制设置" FontSize="22" FontWeight="Bold" Margin="0,0,0,15"/>
+        
+        <!-- 进程选择区域 -->
+        <GroupBox Grid.Row="1" Header="选择目标进程" Margin="0,0,0,15">
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <!-- 搜索区域 -->
+                <Grid Grid.Row="0" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBox x:Name="SearchTextBox" Grid.Column="0" Padding="5" 
+                             Text="搜索应用程序..." Foreground="Gray"
+                             GotFocus="SearchTextBox_GotFocus" 
+                             LostFocus="SearchTextBox_LostFocus"
+                             TextChanged="SearchTextBox_TextChanged"/>
+                    
+                    <Button x:Name="ClearButton" Grid.Column="1" Content="清除" Width="60" 
+                            Margin="5,0,0,0" Click="ClearButton_Click"/>
+                    
+                    <Button x:Name="RefreshButton" Grid.Column="2" Content="刷新" Width="60" 
+                            Margin="5,0,0,0" Click="RefreshButton_Click"/>
+                </Grid>
+                
+                <!-- 进程列表 -->
+                <Grid Grid.Row="1" Height="200" Margin="0,0,0,10">
+                    <ListBox x:Name="ProcessListBox" 
+                             SelectionChanged="ProcessListBox_SelectionChanged">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Image x:Name="ProcessIcon" Width="16" Height="16" Margin="0,0,5,0"/>
+                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" />
+                                    <TextBlock Text=" - " Visibility="{Binding WindowTitle, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                    <TextBlock Text="{Binding WindowTitle}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    
+                    <!-- 加载指示器 -->
+                    <Grid x:Name="LoadingPanel" Visibility="Collapsed" Background="#80FFFFFF">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock Text="正在加载进程列表..." HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                            <ProgressBar IsIndeterminate="True" Width="150" Height="15"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+                
+                <!-- 常用进程 -->
+                <StackPanel Grid.Row="2" Orientation="Vertical" Margin="0,10,0,0">
+                    <TextBlock Text="常用进程:" FontWeight="Bold" Margin="0,0,0,5"/>
+                    <WrapPanel x:Name="FrequentProcessPanel" />
+                </StackPanel>
+            </Grid>
+        </GroupBox>
+        
+        <!-- 当前选中进程 -->
+        <GroupBox Grid.Row="2" Header="当前选中进程" Margin="0,0,0,15">
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <TextBlock x:Name="SelectedProcessText" Grid.Row="0" 
+                           Text="未选择进程" FontSize="14" FontWeight="Bold" Margin="0,0,0,5"/>
+                
+                <TextBlock x:Name="ProcessPathText" Grid.Row="1" 
+                           Text="路径: " TextWrapping="Wrap"/>
+            </Grid>
+        </GroupBox>
+        
+        <!-- 速度限制设置 -->
+        <GroupBox Grid.Row="3" Header="速度限制设置" Margin="0,0,0,15">
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="60"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- 上行限制 -->
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="上行限制:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="Bold"/>
+                <Slider x:Name="UploadSlider" Grid.Row="0" Grid.Column="1" 
+                        Minimum="0" Maximum="1000" Value="100" 
+                        TickFrequency="100" IsSnapToTickEnabled="True"
+                        ValueChanged="UploadSlider_ValueChanged"
+                        Margin="0,10,10,10"
+                        ToolTip="上行速度限制 (KB/s)"/>
+                <TextBox x:Name="UploadTextBox" Grid.Row="0" Grid.Column="2" 
+                         Text="100" TextAlignment="Right" 
+                         VerticalAlignment="Center"
+                         LostFocus="UploadTextBox_LostFocus"
+                         KeyDown="SpeedTextBox_KeyDown"/>
+                
+                <!-- 下行限制 -->
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="下行限制:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="Bold"/>
+                <Slider x:Name="DownloadSlider" Grid.Row="1" Grid.Column="1" 
+                        Minimum="0" Maximum="1000" Value="100" 
+                        TickFrequency="100" IsSnapToTickEnabled="True"
+                        ValueChanged="DownloadSlider_ValueChanged"
+                        Margin="0,10,10,10"
+                        ToolTip="下行速度限制 (KB/s)"/>
+                <TextBox x:Name="DownloadTextBox" Grid.Row="1" Grid.Column="2" 
+                         Text="100" TextAlignment="Right" 
+                         VerticalAlignment="Center"
+                         LostFocus="DownloadTextBox_LostFocus"
+                         KeyDown="SpeedTextBox_KeyDown"/>
+                
+                <!-- 速度单位标签 -->
+                <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" 
+                            Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock Text="单位: KB/s" Foreground="Gray"/>
+                </StackPanel>
+            </Grid>
+        </GroupBox>
+        
+        <!-- 预设设置 -->
+        <GroupBox Grid.Row="4" Header="预设设置" Margin="0,0,0,15">
+            <WrapPanel Margin="10">
+                <Button x:Name="LowPresetButton" Content="低速" Width="80" Height="30" Margin="5" Click="LowPresetButton_Click"/>
+                <Button x:Name="MediumPresetButton" Content="中速" Width="80" Height="30" Margin="5" Click="MediumPresetButton_Click"/>
+                <Button x:Name="HighPresetButton" Content="高速" Width="80" Height="30" Margin="5" Click="HighPresetButton_Click"/>
+                <Button x:Name="CustomPresetButton" Content="自定义..." Width="80" Height="30" Margin="5" Click="CustomPresetButton_Click"/>
+                <Button x:Name="UnlimitedButton" Content="不限速" Width="80" Height="30" Margin="5" Click="UnlimitedButton_Click"/>
+            </WrapPanel>
+        </GroupBox>
+        
+        <!-- 声音设置 -->
+        <GroupBox Grid.Row="5" Header="声音设置" Margin="0,0,0,15">
+            <Grid Margin="10">
+                <CheckBox x:Name="SoundNotificationCheckBox" Content="启用声音提示" IsChecked="True" 
+                          Checked="SoundNotificationCheckBox_CheckedChanged"
+                          Unchecked="SoundNotificationCheckBox_CheckedChanged"/>
+            </Grid>
+        </GroupBox>
+        
+        <!-- 控制按钮区域 -->
+        <Grid Grid.Row="6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock x:Name="StatusText" Text="状态: 未限速" Foreground="Gray"/>
+            </StackPanel>
+            
+            <Button x:Name="HelpButton" Grid.Column="1" Content="帮助" Width="80" Height="35" Margin="0,0,10,0" Click="HelpButton_Click"/>
+            <Button x:Name="ToggleLimitButton" Grid.Column="2" Content="启用限速" Width="100" Height="35" Margin="0,0,10,0" Click="ToggleLimitButton_Click"/>
+            <Button x:Name="CloseButton" Grid.Column="3" Content="关闭" Width="80" Height="35" Click="CloseButton_Click"/>
+        </Grid>
+    </Grid>
+</Window> 

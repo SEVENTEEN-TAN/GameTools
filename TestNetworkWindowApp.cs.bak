@@ -1,0 +1,51 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using Application = System.Windows.Application;
+
+namespace GameTools
+{
+    class TestNetworkWindowApp
+    {
+        [STAThread]
+        public static void Main()
+        {
+            Console.WriteLine("开始测试NetworkControlWindow...");
+            
+            // 创建应用程序
+            var app = new Application();
+            
+            try
+            {
+                // 确保NetworkController初始化
+                var controller = NetworkController.Instance;
+                Console.WriteLine("NetworkController初始化成功");
+                
+                // 创建和显示窗口
+                var window = new NetworkControlWindow();
+                Console.WriteLine("NetworkControlWindow已创建");
+                
+                // 监听窗口加载事件
+                window.Loaded += (s, e) => 
+                {
+                    Console.WriteLine("NetworkControlWindow已加载");
+                };
+                
+                // 显示窗口
+                app.Run(window);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"测试过程中发生异常: {ex.Message}");
+                Console.WriteLine($"堆栈跟踪: {ex.StackTrace}");
+                
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"内部异常: {ex.InnerException.Message}");
+                    Console.WriteLine($"内部异常堆栈: {ex.InnerException.StackTrace}");
+                }
+            }
+        }
+    }
+} 

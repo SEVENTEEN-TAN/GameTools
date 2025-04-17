@@ -1,0 +1,714 @@
+// 此文件已不再使用，使用NetshFirewallManager代替
+// 保留此文件作为参考，以后可能需要查看实现细节
+
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Management.Automation;
+using System.Management.Automation.Runspaces;
+using System.Text;
+using System.Threading.Tasks;
+using System.IO;
+
+namespace GameTools
+{
+    /// <summary>
+    /// Windows防火墙规则管理类
+    /// 使用C#和PowerShell结合的方式，实现Windows防火墙规则管理
+    /// </summary>
+    public class FirewallManager
+    {
+        // 限速信息类
+        private class ThrottlingInfo
+        {
+            public int ProcessId { get; set; }
+            public string RuleName { get; set; } = string.Empty;
+            public int UploadLimitKBps { get; set; }
+            public int DownloadLimitKBps { get; set; }
+        }
+
+        // 活动的限速规则
+        private Dictionary<int, ThrottlingInfo> _activeThrottling = new Dictionary<int, ThrottlingInfo>();
+        
+        #region 单例实现
+        private static FirewallManager _instance;
+
+        /// <summary>
+        /// 获取FirewallManager实例
+        /// </summary>
+        public static FirewallManager Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = new FirewallManager();
+                }
+                return _instance;
+            }
+        }
+
+        private FirewallManager()
+        {
+            // 创建PowerShell运行空间
+            InitializePowerShell();
+        }
+        #endregion
+
+        // PowerShell运行空间
+        private Runspace _runspace;
+        private bool _isInitialized = false;
+
+        /// <summary>
+        /// 初始化PowerShell运行空间
+        /// </summary>
+        private void InitializePowerShell()
+        {
+            try
+            {
+                // 创建一个默认的运行空间
+                _runspace = RunspaceFactory.CreateRunspace();
+                _runspace.Open();
+                _isInitialized = true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"初始化PowerShell运行空间失败: {ex.Message}");
+                _isInitialized = false;
+            }
+        }
+
+        /// <summary>
+        /// 执行PowerShell命令
+        /// </summary>
+        /// <param name="command">要执行的PowerShell命令</param>
+        /// <returns>是否成功执行</returns>
+        private bool ExecutePowerShellProcessCommand(string command)
+        {
+            try
+            {
+                // 创建一个新的进程启动PowerShell
+                ProcessStartInfo startInfo = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = command,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    Verb = "runas" // 以管理员权限运行
+                };
+
+                // 启动进程并等待完成
+                using (Process process = Process.Start(startInfo))
+                {
+                    if (process == null)
+                    {
+                        Console.WriteLine("无法启动PowerShell进程");
+                        return false;
+                    }
+
+                    // 读取输出和错误信息
+                    string output = process.StandardOutput.ReadToEnd();
+                    string error = process.StandardError.ReadToEnd();
+
+                    // 等待进程完成
+                    process.WaitForExit();
+
+                    // 检查是否有错误
+                    if (!string.IsNullOrEmpty(error))
+                    {
+                        Console.WriteLine($"PowerShell命令执行出错: {error}");
+                        return false;
+                    }
+
+                    // 检查退出代码
+                    return process.ExitCode == 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"执行PowerShell命令时发生错误: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 创建防火墙规则允许指定程序的网络访问
+        /// </summary>
+        /// <param name="ruleName">规则名称</param>
+        /// <param name="programPath">程序路径</param>
+        /// <param name="direction">方向，入站(Inbound)或出站(Outbound)</param>
+        /// <param name="action">动作，允许(Allow)或阻止(Block)</param>
+        /// <returns>是否成功</returns>
+        public bool CreateApplicationRule(string ruleName, string programPath, string direction = "Inbound", string action = "Allow")
+        {
+            try
+            {
+                var script = $@"
+                    New-NetFirewallRule -DisplayName '{ruleName}' -Direction {direction} -Program '{programPath}' -Action {action}
+                ";
+                
+                ExecutePowerShellProcessCommand(script);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"创建防火墙应用规则失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 创建防火墙规则允许特定端口的网络访问
+        /// </summary>
+        /// <param name="ruleName">规则名称</param>
+        /// <param name="localPort">本地端口</param>
+        /// <param name="protocol">协议(TCP/UDP)</param>
+        /// <param name="direction">方向，入站(Inbound)或出站(Outbound)</param>
+        /// <param name="action">动作，允许(Allow)或阻止(Block)</param>
+        /// <returns>是否成功</returns>
+        public bool CreatePortRule(string ruleName, int localPort, string protocol = "TCP", string direction = "Inbound", string action = "Allow")
+        {
+            try
+            {
+                var script = $@"
+                    New-NetFirewallRule -DisplayName '{ruleName}' -Direction {direction} -Protocol {protocol} -LocalPort {localPort} -Action {action}
+                ";
+                
+                ExecutePowerShellProcessCommand(script);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"创建防火墙端口规则失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 创建限制特定IP地址的防火墙规则
+        /// </summary>
+        /// <param name="ruleName">规则名称</param>
+        /// <param name="remoteAddress">远程IP地址(支持单个IP, 范围或子网)</param>
+        /// <param name="direction">方向，入站(Inbound)或出站(Outbound)</param>
+        /// <param name="action">动作，允许(Allow)或阻止(Block)</param>
+        /// <returns>是否成功</returns>
+        public bool CreateAddressRule(string ruleName, string remoteAddress, string direction = "Inbound", string action = "Block")
+        {
+            try
+            {
+                var script = $@"
+                    New-NetFirewallRule -DisplayName '{ruleName}' -Direction {direction} -RemoteAddress '{remoteAddress}' -Action {action}
+                ";
+                
+                ExecutePowerShellProcessCommand(script);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"创建防火墙IP地址规则失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 创建限制特定进程的网络速度的防火墙规则
+        /// </summary>
+        /// <param name="ruleName">规则名称</param>
+        /// <param name="processId">进程ID</param>
+        /// <param name="uploadLimitKbps">上行速度限制(Kbps)</param>
+        /// <param name="downloadLimitKbps">下行速度限制(Kbps)</param>
+        /// <returns>是否成功</returns>
+        public bool CreateNetworkLimitRule(string ruleName, int processId, int uploadLimitKbps, int downloadLimitKbps)
+        {
+            try
+            {
+                // 获取进程信息
+                Process process = Process.GetProcessById(processId);
+                string programPath = process.MainModule.FileName;
+                
+                // 为上传速度创建规则(出站限制)
+                if (uploadLimitKbps > 0)
+                {
+                    var uploadScript = $@"
+                        New-NetQosPolicy -Name '{ruleName}_Upload' -AppPathNameMatchCondition '{programPath}' -ThrottleRateActionBitsPerSecond {uploadLimitKbps * 1024}
+                    ";
+                    ExecutePowerShellProcessCommand(uploadScript);
+                }
+                
+                // 为下载速度创建规则(入站限制)
+                if (downloadLimitKbps > 0)
+                {
+                    var downloadScript = $@"
+                        New-NetQosPolicy -Name '{ruleName}_Download' -AppPathNameMatchCondition '{programPath}' -ThrottleRateActionBitsPerSecond {downloadLimitKbps * 1024}
+                    ";
+                    ExecutePowerShellProcessCommand(downloadScript);
+                }
+                
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"创建网络速度限制规则失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 启用防火墙规则
+        /// </summary>
+        /// <param name="ruleName">规则名称</param>
+        /// <returns>是否成功</returns>
+        public bool EnableRule(string ruleName)
+        {
+            try
+            {
+                var script = $@"
+                    Enable-NetFirewallRule -DisplayName '{ruleName}'
+                ";
+                
+                ExecutePowerShellProcessCommand(script);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"启用防火墙规则失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 禁用防火墙规则
+        /// </summary>
+        /// <param name="ruleName">规则名称</param>
+        /// <returns>是否成功</returns>
+        public bool DisableRule(string ruleName)
+        {
+            try
+            {
+                var script = $@"
+                    Disable-NetFirewallRule -DisplayName '{ruleName}'
+                ";
+                
+                ExecutePowerShellProcessCommand(script);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"禁用防火墙规则失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 删除防火墙规则
+        /// </summary>
+        /// <param name="ruleName">规则名称</param>
+        /// <returns>是否成功</returns>
+        public bool RemoveRule(string ruleName)
+        {
+            try
+            {
+                // 移除入站规则和对应的QoS策略
+                string removeInboundCommand = $@"
+                    Remove-NetFirewallRule -DisplayName '{ruleName}_Inbound' -ErrorAction SilentlyContinue;
+                    Remove-NetQosPolicy -Name '{ruleName}_Inbound' -ErrorAction SilentlyContinue";
+
+                // 移除出站规则和对应的QoS策略
+                string removeOutboundCommand = $@"
+                    Remove-NetFirewallRule -DisplayName '{ruleName}_Outbound' -ErrorAction SilentlyContinue;
+                    Remove-NetQosPolicy -Name '{ruleName}_Outbound' -ErrorAction SilentlyContinue";
+
+                // 执行命令
+                bool inboundRemoved = ExecutePowerShellProcessCommand(removeInboundCommand);
+                bool outboundRemoved = ExecutePowerShellProcessCommand(removeOutboundCommand);
+
+                return inboundRemoved && outboundRemoved;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"移除防火墙规则时发生错误: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 获取所有防火墙规则
+        /// </summary>
+        /// <returns>规则列表</returns>
+        public List<string> GetAllRules()
+        {
+            try
+            {
+                var script = @"
+                    Get-NetFirewallRule | Select-Object -Property DisplayName
+                ";
+                
+                var results = ExecutePowerShellProcessCommand(script);
+                return results.Select(r => r.Properties["DisplayName"].Value.ToString()).ToList();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"获取防火墙规则列表失败: {ex.Message}");
+                return new List<string>();
+            }
+        }
+
+        /// <summary>
+        /// 检查防火墙规则是否存在
+        /// </summary>
+        /// <param name="ruleName">规则名称</param>
+        /// <returns>规则是否存在</returns>
+        public bool RuleExists(string ruleName)
+        {
+            try
+            {
+                var script = $@"
+                    Get-NetFirewallRule -DisplayName '{ruleName}' -ErrorAction SilentlyContinue
+                ";
+                
+                var results = ExecutePowerShellProcessCommand(script);
+                return results.Count > 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 检查防火墙规则是否启用
+        /// </summary>
+        /// <param name="ruleName">规则名称</param>
+        /// <returns>规则是否启用</returns>
+        public bool IsRuleEnabled(string ruleName)
+        {
+            try
+            {
+                var script = $@"
+                    Get-NetFirewallRule -DisplayName '{ruleName}' | Select-Object -ExpandProperty Enabled
+                ";
+                
+                var results = ExecutePowerShellProcessCommand(script);
+                if (results.Count > 0)
+                {
+                    return Convert.ToBoolean(results[0]);
+                }
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 启用Windows防火墙
+        /// </summary>
+        /// <returns>是否成功</returns>
+        public bool EnableFirewall()
+        {
+            try
+            {
+                var script = @"
+                    Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True
+                ";
+                
+                ExecutePowerShellProcessCommand(script);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"启用Windows防火墙失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 禁用Windows防火墙
+        /// </summary>
+        /// <returns>是否成功</returns>
+        public bool DisableFirewall()
+        {
+            try
+            {
+                var script = @"
+                    Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
+                ";
+                
+                ExecutePowerShellProcessCommand(script);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"禁用Windows防火墙失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 创建网络限速规则
+        /// </summary>
+        /// <param name="ruleName">规则名称</param>
+        /// <param name="programPath">应用程序路径</param>
+        /// <param name="downloadLimit">下载速度限制 (KB/s)</param>
+        /// <param name="uploadLimit">上传速度限制 (KB/s)</param>
+        /// <returns>是否成功创建规则</returns>
+        public bool CreateNetworkLimitRule(string ruleName, string programPath, int downloadLimit, int uploadLimit)
+        {
+            try
+            {
+                // 确保程序路径存在
+                if (!File.Exists(programPath))
+                {
+                    Console.WriteLine($"程序路径不存在: {programPath}");
+                    return false;
+                }
+
+                // 创建入站规则（控制下载速度）
+                bool inboundSuccess = false;
+                if (downloadLimit > 0)
+                {
+                    string inboundRuleName = $"{ruleName}_Inbound";
+                    string inboundCommand = $@"
+                        New-NetFirewallRule -DisplayName '{inboundRuleName}' -Direction Inbound -Program '{programPath}' -Action Allow | 
+                        Set-NetQosPolicy -Name '{inboundRuleName}' -ThrottleRateActionBitsPerSecond {downloadLimit * 1024} -ThrottleRateInbound";
+
+                    inboundSuccess = ExecutePowerShellProcessCommand(inboundCommand);
+                }
+                else
+                {
+                    inboundSuccess = true; // 如果不需要限制，视为成功
+                }
+
+                // 创建出站规则（控制上传速度）
+                bool outboundSuccess = false;
+                if (uploadLimit > 0)
+                {
+                    string outboundRuleName = $"{ruleName}_Outbound";
+                    string outboundCommand = $@"
+                        New-NetFirewallRule -DisplayName '{outboundRuleName}' -Direction Outbound -Program '{programPath}' -Action Allow | 
+                        Set-NetQosPolicy -Name '{outboundRuleName}' -ThrottleRateActionBitsPerSecond {uploadLimit * 1024} -ThrottleRateOutbound";
+
+                    outboundSuccess = ExecutePowerShellProcessCommand(outboundCommand);
+                }
+                else
+                {
+                    outboundSuccess = true; // 如果不需要限制，视为成功
+                }
+
+                return inboundSuccess && outboundSuccess;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"创建网络限速规则时发生错误: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 检查是否以管理员权限运行
+        /// </summary>
+        /// <returns>是否具有管理员权限</returns>
+        public static bool IsRunningAsAdmin()
+        {
+            try
+            {
+                // 使用PowerShell检查当前用户是否具有管理员权限
+                ProcessStartInfo startInfo = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = "-NoProfile -ExecutionPolicy Bypass -Command \"[bool](([System.Security.Principal.WindowsIdentity]::GetCurrent()).groups -match 'S-1-5-32-544')\"",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using (Process process = Process.Start(startInfo))
+                {
+                    if (process == null)
+                    {
+                        return false;
+                    }
+
+                    string output = process.StandardOutput.ReadToEnd().Trim();
+                    process.WaitForExit();
+
+                    return output.Equals("True", StringComparison.OrdinalIgnoreCase);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public async Task<bool> ApplyLimit(int processId, int uploadLimitKBps, int downloadLimitKBps)
+        {
+            try
+            {
+                // 检查进程是否存在
+                Process? process = null;
+                try
+                {
+                    process = Process.GetProcessById(processId);
+                }
+                catch (ArgumentException)
+                {
+                    Console.WriteLine($"进程 {processId} 不存在");
+                    return false;
+                }
+
+                // 获取进程可执行文件路径
+                string? executablePath = null;
+                try
+                {
+                    executablePath = process.MainModule?.FileName;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"无法获取进程 {processId} 的路径: {ex.Message}");
+                    return false;
+                }
+
+                if (string.IsNullOrEmpty(executablePath) || !File.Exists(executablePath))
+                {
+                    Console.WriteLine($"进程 {processId} 路径无效或不存在");
+                    return false;
+                }
+
+                // 先移除已有的限速
+                if (_activeThrottling.ContainsKey(processId))
+                {
+                    await RemoveLimit(processId);
+                }
+
+                // 创建唯一的规则名称
+                string ruleName = $"GameTools_NetLimit_{processId}_{DateTime.Now.Ticks}";
+
+                // 使用IPsec策略限制网络速度（比防火墙规则更可靠）
+                bool success = await CreateIpSecPolicyRule(ruleName, executablePath, uploadLimitKBps, downloadLimitKBps);
+                
+                if (success)
+                {
+                    // 记录活动限速信息
+                    var throttlingInfo = new ThrottlingInfo
+                    {
+                        ProcessId = processId,
+                        RuleName = ruleName,
+                        UploadLimitKBps = uploadLimitKBps,
+                        DownloadLimitKBps = downloadLimitKBps
+                    };
+                    
+                    _activeThrottling[processId] = throttlingInfo;
+                    Console.WriteLine($"已成功对进程 {processId} 应用网络限速");
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine($"对进程 {processId} 应用网络限速失败");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"应用网络限速时发生错误: {ex.Message}");
+                return false;
+            }
+        }
+
+        // 使用直接的速率限制方法
+        private async Task<bool> CreateIpSecPolicyRule(string ruleName, string programPath, int uploadLimitKBps, int downloadLimitKBps)
+        {
+            try
+            {
+                // 为上传限速创建规则
+                if (uploadLimitKBps > 0)
+                {
+                    string uploadRuleName = $"{ruleName}_Upload";
+                    
+                    // 使用netsh interface tcp set global方式更可靠
+                    string args = $"interface ipv4 add policy name=\"{uploadRuleName}\" dir=out throttlelimit={uploadLimitKBps} throttlelimittype=kbps program=\"{programPath}\"";
+                    
+                    bool uploadSuccess = await Task.Run(() => _firewallManager.ExecuteNetshCommand(args));
+                    if (!uploadSuccess)
+                    {
+                        Console.WriteLine($"创建上传限速规则失败: {uploadRuleName}");
+                        return false;
+                    }
+                }
+                
+                // 为下载限速创建规则
+                if (downloadLimitKBps > 0)
+                {
+                    string downloadRuleName = $"{ruleName}_Download";
+                    
+                    string args = $"interface ipv4 add policy name=\"{downloadRuleName}\" dir=in throttlelimit={downloadLimitKBps} throttlelimittype=kbps program=\"{programPath}\"";
+                    
+                    bool downloadSuccess = await Task.Run(() => _firewallManager.ExecuteNetshCommand(args));
+                    if (!downloadSuccess)
+                    {
+                        Console.WriteLine($"创建下载限速规则失败: {downloadRuleName}");
+                        return false;
+                    }
+                }
+                
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"创建IPsec策略规则失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 移除网络限速
+        /// </summary>
+        /// <param name="processId">进程ID</param>
+        /// <returns>是否成功移除限速</returns>
+        public async Task<bool> RemoveLimit(int processId)
+        {
+            try
+            {
+                // 检查是否存在活动的限速
+                if (_activeThrottling.TryGetValue(processId, out var throttlingInfo))
+                {
+                    string ruleName = throttlingInfo.RuleName;
+                    
+                    // 移除入站规则和对应的QoS策略
+                    string removeInboundCommand = $@"
+                        Remove-NetFirewallRule -DisplayName '{ruleName}_Inbound' -ErrorAction SilentlyContinue;
+                        Remove-NetQosPolicy -Name '{ruleName}_Inbound' -ErrorAction SilentlyContinue";
+
+                    // 移除出站规则和对应的QoS策略
+                    string removeOutboundCommand = $@"
+                        Remove-NetFirewallRule -DisplayName '{ruleName}_Outbound' -ErrorAction SilentlyContinue;
+                        Remove-NetQosPolicy -Name '{ruleName}_Outbound' -ErrorAction SilentlyContinue";
+
+                    // 执行命令
+                    await Task.Run(() => {
+                        ExecutePowerShellProcessCommand(removeInboundCommand);
+                        ExecutePowerShellProcessCommand(removeOutboundCommand);
+                    });
+                    
+                    // 从活动限速中移除
+                    _activeThrottling.Remove(processId);
+                    
+                    Console.WriteLine($"已移除进程 {processId} 的网络限速");
+                    return true;
+                }
+                
+                // 如果没有找到活动的限速，也返回成功
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"移除网络限速时发生错误: {ex.Message}");
+                return false;
+            }
+        }
+    }
+} 

@@ -12,6 +12,7 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.Windows.Forms;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace GameTools;
 
@@ -59,6 +60,9 @@ public partial class MainWindow : Window
     // 准星是否可见
     private bool _isCrosshairVisible = true;
 
+    // 新增: 打开网络控制窗口
+    private NetworkControlWindow _networkControlWindow;
+    
     public MainWindow()
     {
         InitializeComponent();
@@ -104,9 +108,14 @@ public partial class MainWindow : Window
         toggleItem.Click += (s, e) => ToggleVisibility();
         contextMenu.Items.Add(toggleItem);
         
-        ToolStripMenuItem settingsItem = new ToolStripMenuItem("设置");
+        ToolStripMenuItem settingsItem = new ToolStripMenuItem("准星设置");
         settingsItem.Click += (s, e) => OpenSettings();
         contextMenu.Items.Add(settingsItem);
+        
+        // 添加网络控制菜单项
+        ToolStripMenuItem networkItem = new ToolStripMenuItem("网络控制");
+        networkItem.Click += (s, e) => OpenNetworkControl();
+        contextMenu.Items.Add(networkItem);
         
         contextMenu.Items.Add(new ToolStripSeparator());
         
@@ -176,6 +185,11 @@ public partial class MainWindow : Window
         
         _hotkeyManager.RegisterHotKey(Key.X, alt: true, callback: OpenSettings);
         
+        // 网络控制相关快捷键
+        _hotkeyManager.RegisterHotKey(Key.N, alt: true, callback: OpenNetworkControl);
+        
+        _hotkeyManager.RegisterHotKey(Key.L, alt: true, callback: ToggleNetworkLimit);
+        
         _hotkeyManager.RegisterHotKey(Key.Up, alt: true, callback: MoveUp);
         
         _hotkeyManager.RegisterHotKey(Key.Down, alt: true, callback: MoveDown);
@@ -220,6 +234,26 @@ public partial class MainWindow : Window
         {
             _settingsWindow.Activate();
         }
+    }
+    
+    // 新增: 打开网络控制窗口
+    private void OpenNetworkControl()
+    {
+        if (_networkControlWindow == null || !_networkControlWindow.IsLoaded)
+        {
+            _networkControlWindow = new NetworkControlWindow();
+            _networkControlWindow.Show();
+        }
+        else
+        {
+            _networkControlWindow.Activate();
+        }
+    }
+    
+    // 新增: 网络限速快捷切换
+    private async void ToggleNetworkLimit()
+    {
+        await NetworkController.Instance.ToggleNetworkLimit();
     }
 
     private void MoveUp()
